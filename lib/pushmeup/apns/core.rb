@@ -68,25 +68,28 @@ protected
   
   def self.with_connection
     attempts = 1
-  
-    begin      
+
+    begin
+
       # If no @ssl is created or if @ssl is closed we need to start it
-      if @ssl.nil? || @sock.nil? || @ssl.closed? || @sock.closed?
+      if @ssl.nil? || @sock.nil?
+        @sock, @ssl = self.open_connection
+      elsif @ssl.closed? || @sock.closed?
         @sock, @ssl = self.open_connection
       end
-    
+
       yield
-    
+
     rescue StandardError, Errno::EPIPE
       raise unless attempts < @retries
-    
-      @ssl.close
-      @sock.close
-    
+
+      @ssl.close unless @ssl.nil?
+      @sock.close unless @sock.nil?
+
       attempts += 1
       retry
     end
-  
+
     # Only force close if not persistent
     unless @persistent
       @ssl.close
